@@ -83,9 +83,6 @@ def bin_output(outputs,output_times,dt,wdw_start,wdw_end,downsample_factor=1):
 
 ######## SIMPLE BINNING FOR EQUIDISTANT OUTPUT #######
 def bin_equidistant_output(outputs, width):
-    '''
-    width : bin width in number of time steps, NOT time
-    '''
     data = outputs.T
     outputs_binned = array(data[:(data.size // width) * width].reshape(-1, width).mean(axis=1)).T
     return outputs_binned
