@@ -23,7 +23,9 @@ except ImportError:
 #But if you want to modify the decoders with other functions (e.g. regularization), import them here
 try:
     from keras.models import Sequential
-    from keras.layers import Dense, LSTM, SimpleRNN, GRU, Activation, Dropout
+    from keras.layers import Dense, LSTM, SimpleRNN, GRU, Activation, Dropout, Conv1D, Flatten
+    from keras import regularizers
+
 except ImportError:
     print("\nWARNING: Keras package is not installed. You will be unable to use all neural net decoders")
     pass
@@ -676,6 +678,113 @@ class LSTMDecoder(object):
         y_test_predicted = self.model.predict(X_test) #Make predictions
         return y_test_predicted
 
+############## 1D CONV PLUS DNN ###############
+class CNNDecoder(object):
+
+    """
+    Class for the dense (fully-connected) neural network decoder with a preprocessing 1D convolution
+
+    Parameters
+    ----------
+
+    units: integer or vector of integers, optional, default 400
+        This is the number of hidden units in each layer
+        If you want a single layer, input an integer (e.g. units=400 will give you a single hidden layer with 400 units)
+        If you want multiple layers, input a vector (e.g. units=[400,200]) will give you 2 hidden layers with 400 and 200 units, repsectively.
+        The vector can either be a list or an array
+
+    dropout: decimal, optional, default 0
+        Proportion of units that get dropped out
+
+    num_epochs: integer, optional, default 10
+        Number of epochs used for training
+
+    verbose: binary, optional, default=0
+        Whether to show progress of the fit after each epoch
+    """
+
+    def __init__(self, units= [400], Cunits = 64, kernel_width = 10,dropout=0,num_epochs=10,verbose=0):
+         self.dropout=dropout
+         self.num_epochs=num_epochs
+         self.verbose=verbose
+         self.Cunits = Cunits
+         self.kernel_width = kernel_width
+
+         #If "units" is an integer, put it in the form of a vector
+         try: #Check if it's a vector
+             units[0]
+         except: #If it's not a vector, create a vector of the number of units for each layer
+             units=[units]
+         self.units=units
+
+         #Determine the number of hidden layers (based on "units" that the user entered)
+         self.num_layers=len(units)
+
+    def fit(self,X_train,y_train):
+
+        """
+        Train DenseNN Decoder
+
+        Parameters
+        ----------
+        X_flat_train: numpy 2d array of shape [n_samples,n_features]
+            This is the neural data.
+            See example file for an example of how to format the neural data correctly
+
+        y_train: numpy 2d array of shape [n_samples, n_outputs]
+            This is the outputs that are being predicted
+        """
+        print X_train.shape, y_train.shape
+        
+        #X_train = X_train.swapaxes(1,2)
+        
+        model=Sequential() #Declare model
+        model.add(Conv1D(self.Cunits, self.kernel_width, input_shape = (X_train.shape[1], X_train.shape[2]), strides=1, padding='same', activation='relu', use_bias=True, activity_regularizer=None, kernel_regularizer= None, bias_regularizer=None,))
+        #Add first hidden layer
+        model.add(Flatten())
+        model.add(Dropout(self.dropout))
+        model.add(Dense(self.units[0],)) #Add dense layer
+        model.add(Activation('relu')) #Add nonlinear (tanh) activation
+        # if self.dropout!=0:
+        if self.dropout!=0: model.add(Dropout(self.dropout))  #Dropout some units if proportion of dropout != 0
+
+        #Add any additional hidden layers (beyond the 1st)
+        for layer in range(self.num_layers-1): #Loop through additional layers
+            model.add(Dense(self.units[layer+1])) #Add dense layer
+            model.add(Activation('relu')) #Add nonlinear (tanh) activation
+            if self.dropout!=0: model.add(Dropout(self.dropout)) #Dropout some units if proportion of dropout != 0
+
+        #Add dense connections to all outputs
+        model.add(Dense(y_train.shape[1])) #Add final dense layer (connected to outputs)
+        
+        model.summary()
+
+        #Fit model (and set fitting parameters)
+        model.compile(loss='mse',optimizer='adam',metrics=['accuracy']) #Set loss function and optimizer
+        model.fit(X_train,y_train,nb_epoch=self.num_epochs,verbose=self.verbose, validation_split = .2) #Fit the model
+        self.model=model
+
+
+    def predict(self,X_flat_test):
+
+        """
+        Predict outcomes using trained DenseNN Decoder
+
+        Parameters
+        ----------
+        X_flat_test: numpy 2d array of shape [n_samples,n_features]
+            This is the neural data being used to predict outputs.
+
+        Returns
+        -------
+        y_test_predicted: numpy 2d array of shape [n_samples,n_outputs]
+            The predicted outputs
+        """
+
+        y_test_predicted = self.model.predict(X_flat_test) #Make predictions
+        return y_test_predicted
+
+`
 
 
 ##################### EXTREME GRADIENT BOOSTING (XGBOOST) ##########################
