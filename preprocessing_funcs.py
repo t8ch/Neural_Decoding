@@ -31,7 +31,24 @@ def bin_spikes(spike_times,dt,wdw_start,wdw_end):
         neural_data[:,i]=np.histogram(spike_times[i],edges)[0]
     return neural_data
 
+######## SIMPLE BINNING FOR EQUIDISTANT OUTPUT AND NO EDGE CUTTING #######
+def bin_equidistant_output(outputs, width):
+    '''
+    width : bin width in number of time steps, NOT time
+    '''
+    data = outputs.T
+    outputs_binned = array(data[:(data.size // width) * width].reshape(-1, width).mean(axis=1)).T
+    return outputs_binned
 
+#### MAP BINARY SPIKING DATA TO SPIKE TIMES ####
+def binary_to_times(spikes, dt):
+    """
+    maps spike trains represented with 0s and 1s to spike times
+    Params
+    --------------
+    
+    """
+    return np.array([np.argwhere(spikes[:, x]).ravel()*dt for x in range(np.shape(spikes)[1])])
 
 ######## BIN_OUTPUT #######
 def bin_output(outputs,output_times,dt,wdw_start,wdw_end,downsample_factor=1):
@@ -81,16 +98,6 @@ def bin_output(outputs,output_times,dt,wdw_start,wdw_end,downsample_factor=1):
     return outputs_binned
 
 
-######## SIMPLE BINNING FOR EQUIDISTANT OUTPUT #######
-def bin_equidistant_output(outputs, width):
-    '''
-    width : bin width in number of time steps, NOT time
-    '''
-    data = outputs.T
-    outputs_binned = array(data[:(data.size // width) * width].reshape(-1, width).mean(axis=1)).T
-    return outputs_binned
-
-
 ###$$ GET_SPIKES_WITH_HISTORY #####
 def get_spikes_with_history(neural_data,bins_before,bins_after,bins_current=1):
     """
@@ -127,3 +134,74 @@ def get_spikes_with_history(neural_data,bins_before,bins_after,bins_current=1):
         X[i+bins_before,:,:]=neural_data[start_idx:end_idx,:] #Put neural data from surrounding bins in X, starting at row "bins_before"
         start_idx=start_idx+1;
     return X
+
+##### GENERATE TRAINING, TEST, VALIDATION DATA (normal+flat) #####
+def get_training_data(X, y, splits, bins_before, bins_after):
+    """
+    function that creates a test/train.validation split on the data (input and output)
+
+    Parameters
+    ----------
+    X: matrix of size "number of total time bins" x "number of surrounding time bins used for prediction" x "number of neurons"
+        For every time bin, there are the firing rates of all neurons from the specified number of time bins before (and after)
+    y:  matrix of size "number of time bins" x "number of features in the output"
+        the average value of each output feature in every time bin
+    splits: 2-element list type or tuple. The values charcterize the fraction of the data at which the splits train/test/validate are made.
+    bins_before: How many bins of neural data prior to the output are used for decoding
+    bins_after: How many bins of neural data after the output are used for decoding
+    
+    Returns
+    -------
+    X_train_mean, X_train, X_test, X_valid, X_flat_train_mean, X_flat_train, X_flat_test, X_flat_valid, y_train_mean, y_train, y_test, y_valid
+    """
+    training_range= [0, splits[0]]
+    testing_range= splits
+    valid_range=[splits[1], 1]
+    
+    num_examples=X.shape[0]
+
+    #Note that each range has a buffer of"bins_before" bins at the beginning, and "bins_after" bins at the end
+    #This makes it so that the different sets don't include overlapping neural data
+    training_set=np.arange(np.int(np.round(training_range[0]*num_examples))+bins_before,np.int(np.round(training_range[1]*num_examples))-bins_after)
+    testing_set=np.arange(np.int(np.round(testing_range[0]*num_examples))+bins_before,np.int(np.round(testing_range[1]*num_examples))-bins_after)
+    valid_set=np.arange(np.int(np.round(valid_range[0]*num_examples))+bins_before,np.int(np.round(valid_range[1]*num_examples))-bins_after)
+
+    #Get training data
+    X_train=X[training_set,:,:]
+    y_train=y[training_set,:]
+
+    #Get testing data
+    X_test=X[testing_set,:,:]
+    y_test=y[testing_set,:]
+
+    #Get validation data
+    X_valid=X[valid_set,:,:]
+    y_valid=y[valid_set,:]
+
+    #Z-score "X" inputs. 
+    X_train_mean=np.nanmean(X_train,axis=0)
+    X_train_std=np.nanstd(X_train,axis=0)
+    X_train=(X_train-X_train_mean)/X_train_std
+    X_test=(X_test-X_train_mean)/X_train_std
+    X_valid=(X_valid-X_train_mean)/X_train_std
+
+    X_flat=X.reshape(X.shape[0],(X.shape[1]*X.shape[2]))
+    X_flat_train=X_flat[training_set,:]
+    X_flat_test=X_flat[testing_set,:]
+    X_flat_valid=X_flat[valid_set,:]
+
+    #Z-score "X_flat" inputs. 
+    X_flat_train_mean=np.nanmean(X_flat_train,axis=0)
+    X_flat_train_std=np.nanstd(X_flat_train,axis=0)
+    X_flat_train=(X_flat_train-X_flat_train_mean)/X_flat_train_std
+    X_flat_test=(X_flat_test-X_flat_train_mean)/X_flat_train_std
+    X_flat_valid=(X_flat_valid-X_flat_train_mean)/X_flat_train_std
+
+    #Zero-center outputs
+    y_train_mean=np.mean(y_train,axis=0)
+    y_train=y_train-y_train_mean
+    y_test=y_test-y_train_mean
+    y_valid=y_valid-y_train_mean
+
+    return X_train_mean, X_train, X_test, X_valid, X_flat_train_mean, X_flat_train, X_flat_test, X_flat_valid, y_train_mean, y_train, y_test, y_valid
+    
