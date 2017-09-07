@@ -37,7 +37,8 @@ def bin_equidistant_output(outputs, width):
     width : bin width in number of time steps, NOT time
     '''
     data = outputs.T
-    outputs_binned = array(data[:(data.size // width) * width].reshape(-1, width).mean(axis=1)).T
+    feature_dim, time_dim = data.shape
+    outputs_binned = np.array([data[x][:(time_dim // width) * width].reshape(-1, width).mean(axis=1) for x in range(feature_dim)]).T
     return outputs_binned
 
 #### MAP BINARY SPIKING DATA TO SPIKE TIMES ####
