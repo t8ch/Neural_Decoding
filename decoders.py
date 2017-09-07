@@ -417,7 +417,7 @@ class DenseNNDecoder(object):
 
         #Fit model (and set fitting parameters)
         model.compile(loss='mse',optimizer='adam',metrics=['accuracy']) #Set loss function and optimizer
-        model.fit(X_flat_train,y_train,nb_epoch=self.num_epochs,verbose=self.verbose) #Fit the model
+        model.fit(X_flat_train,y_train,nb_epoch=self.num_epochs,verbose=self.verbose, validation_split = .1) #Fit the model
         self.model=model
 
 
@@ -497,7 +497,7 @@ class SimpleRNNDecoder(object):
 
         #Fit model (and set fitting parameters)
         model.compile(loss='mse',optimizer='rmsprop',metrics=['accuracy']) #Set loss function and optimizer
-        model.fit(X_train,y_train,nb_epoch=self.num_epochs,verbose=self.verbose) #Fit the model
+        model.fit(X_train,y_train,nb_epoch=self.num_epochs,verbose=self.verbose, validation_split = .1) #Fit the model
         self.model=model
 
 
@@ -576,7 +576,7 @@ class GRUDecoder(object):
 
         #Fit model (and set fitting parameters)
         model.compile(loss='mse',optimizer='rmsprop',metrics=['accuracy']) #Set loss function and optimizer
-        model.fit(X_train,y_train,nb_epoch=self.num_epochs,verbose=self.verbose) #Fit the model
+        model.fit(X_train,y_train,nb_epoch=self.num_epochs,verbose=self.verbose, validation_split = .1) #Fit the model
         self.model=model
 
 
@@ -655,7 +655,7 @@ class LSTMDecoder(object):
 
         #Fit model (and set fitting parameters)
         model.compile(loss='mse',optimizer='rmsprop',metrics=['accuracy']) #Set loss function and optimizer
-        model.fit(X_train,y_train,nb_epoch=self.num_epochs,verbose=self.verbose) #Fit the model
+        model.fit(X_train,y_train,nb_epoch=self.num_epochs,verbose=self.verbose, validation_split = .1) #Fit the model
         self.model=model
 
 
@@ -761,7 +761,7 @@ class CNNDecoder(object):
 
         #Fit model (and set fitting parameters)
         model.compile(loss='mse',optimizer='adam',metrics=['accuracy']) #Set loss function and optimizer
-        model.fit(X_train,y_train,nb_epoch=self.num_epochs,verbose=self.verbose, validation_split = .2) #Fit the model
+        model.fit(X_train,y_train,nb_epoch=self.num_epochs,verbose=self.verbose, validation_split = .1) #Fit the model
         self.model=model
 
 
@@ -783,8 +783,6 @@ class CNNDecoder(object):
 
         y_test_predicted = self.model.predict(X_flat_test) #Make predictions
         return y_test_predicted
-
-`
 
 
 ##################### EXTREME GRADIENT BOOSTING (XGBOOST) ##########################
